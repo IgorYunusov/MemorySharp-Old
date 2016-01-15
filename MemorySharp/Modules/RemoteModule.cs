@@ -181,7 +181,7 @@ namespace Binarysharp.MemoryManagement.Modules
                 var result = new PatternScanResult
                 {
                     OriginalAddress = found,
-                    Address = rebaseResult ? found : IntPtr.Subtract(found, (int)BaseAddress),
+                    Address = rebaseResult ? found : IntPtr.Subtract(found, (int) BaseAddress),
                     Offset = (IntPtr) offset
                 };
 
