@@ -182,7 +182,7 @@ namespace Binarysharp.MemoryManagement.Modules
                 {
                     OriginalAddress = found,
                     Address = rebaseResult ? found : IntPtr.Subtract(found, (int)BaseAddress),
-                    Offset = (IntPtr)offset
+                    Offset = (IntPtr) offset
                 };
 
                 return result;

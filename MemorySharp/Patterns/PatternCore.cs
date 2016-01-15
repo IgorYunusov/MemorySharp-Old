@@ -52,7 +52,7 @@ namespace Binarysharp.MemoryManagement.Patterns
                 {
                     OriginalAddress = found,
                     Address = reBase ? found : found.Subtract(processModule.BaseAddress),
-                    Offset = (IntPtr)offset
+                    Offset = (IntPtr) offset
                 };
                 return result;
             }
@@ -82,7 +82,7 @@ namespace Binarysharp.MemoryManagement.Patterns
         {
             return pattern
                 .Split(' ')
-                .Select(s => s.Contains('?') ? (byte)0 : byte.Parse(s, NumberStyles.HexNumber))
+                .Select(s => s.Contains('?') ? (byte) 0 : byte.Parse(s, NumberStyles.HexNumber))
                 .ToArray();
         }
 
