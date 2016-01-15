@@ -52,7 +52,7 @@ namespace Binarysharp.MemoryManagement.Patterns
                 {
                     OriginalAddress = found,
                     Address = reBase ? found : found.Subtract(processModule.BaseAddress),
-                    Offset = (IntPtr) offset
+                    Offset = (IntPtr)offset
                 };
                 return result;
             }
@@ -82,7 +82,7 @@ namespace Binarysharp.MemoryManagement.Patterns
         {
             return pattern
                 .Split(' ')
-                .Select(s => s.Contains('?') ? (byte) 0 : byte.Parse(s, NumberStyles.HexNumber))
+                .Select(s => s.Contains('?') ? (byte)0 : byte.Parse(s, NumberStyles.HexNumber))
                 .ToArray();
         }
 
@@ -130,19 +130,21 @@ namespace Binarysharp.MemoryManagement.Patterns
         /// <summary>
         ///     Creates a mask from a given pattern, using the given chars.
         /// </summary>
-        /// <param name="pattern">The pattern this functions designs a mask for.</param>
-        /// <param name="wildcardByte">Byte that is interpreted as a wildcard.</param>
-        /// <param name="wildcardChar">Char that is used as wildcard.</param>
+        /// <param name="pattern">The pattern this function designs a mask for.</param>
+        /// <param name="wildcardStr">String that is interpreted as a wildcard.</param>
+        /// <param name="wildcardChar">Char that is used as wildcard</param>
         /// <param name="matchChar">Char that is no wildcard.</param>
-        /// <returns>A <see cref="string" /> containing the mask to use for the given array of bytes that make up the pattern.</returns>
-        public static string MaskFromPattern(byte[] pattern, byte wildcardByte = 0, char wildcardChar = '?',
+        /// <returns></returns>
+        public static string MaskFromPattern(string pattern, string wildcardStr = "??", char wildcardChar = '?',
             char matchChar = 'x')
         {
-            var chr = new char[pattern.Length];
+            var parts = pattern.Split(' ');
+            var chr = new char[parts.Length];
             for (var i = 0; i < chr.Length; i++)
             {
-                chr[i] = pattern[i] == wildcardByte ? wildcardChar : matchChar;
+                chr[i] = (parts[i] == wildcardStr) ? wildcardChar : matchChar;
             }
+
             return new string(chr);
         }
 
