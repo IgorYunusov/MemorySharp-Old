@@ -18,7 +18,7 @@ namespace Binarysharp.MemoryManagement.Common.Builders
         /// <summary>
         ///     States if the element is enabled.
         /// </summary>
-        bool IsEnabled { get; }
+        bool IsEnabled { get; set; }
         #endregion
 
         #region Public Methods

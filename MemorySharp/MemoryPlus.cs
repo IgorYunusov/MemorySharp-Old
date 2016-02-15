@@ -8,7 +8,6 @@ using Binarysharp.MemoryManagement.Management;
 using Binarysharp.MemoryManagement.Marshaling;
 using Binarysharp.MemoryManagement.Memory;
 using Binarysharp.MemoryManagement.Native;
-using SharpPlus.Memory.Modules;
 
 namespace Binarysharp.MemoryManagement
 {
@@ -29,8 +28,6 @@ namespace Binarysharp.MemoryManagement
         {
             Factories.Add(Detours = new DetourManager(this));
             Factories.Add(Hooks = new HookManager());
-            var s = new ScanResult();
-           
         }
         #endregion
 

@@ -103,10 +103,6 @@
     <Compile Include="Common\Helpers\RandomHelper.cs" />
     <Compile Include="Common\Helpers\XmlHelper.cs" />
     <Compile Include="Edits\Detour.cs" />
-    <Compile Include="Hooks\WndProc\IWindowProcHookEngine.cs" />
-    <Compile Include="Hooks\WndProc\IWindowProcHookPulse.cs" />
-    <Compile Include="Hooks\WndProc\WindowProcHook.cs" />
-    <Compile Include="Hooks\WndProc\WindowProcPulseEngine.cs" />
     <Compile Include="Management\DetourManager.cs" />
     <Compile Include="Edits\Patch.cs" />
     <Compile Include="Management\PatchManager.cs" />
@@ -191,12 +187,10 @@
     <Compile Include="Native\SafeMemoryHandle.cs" />
     <Compile Include="Native\NativeMethods.cs" />
     <Compile Include="Native\Structs\FlashInfo.cs" />
-    <Compile Include="Modules\Patterns\DataPattern.cs" />
-    <Compile Include="Modules\Patterns\FunctionPattern.cs" />
-    <Compile Include="Modules\Patterns\Patterns.cs" />
-    <Compile Include="Modules\Patterns\XmlDataPattern.cs" />
-    <Compile Include="Modules\Patterns\ScanResult.cs" />
-    <Compile Include="Modules\Patterns\XmlFunctionPattern.cs" />
+    <Compile Include="Patterns\PatternCore.cs" />
+    <Compile Include="Patterns\Pattern.cs" />
+    <Compile Include="Patterns\PatternScanResult.cs" />
+    <Compile Include="Patterns\SerializablePattern.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Threading\Enumerations.cs" />
     <Compile Include="Threading\FrozenThread.cs" />

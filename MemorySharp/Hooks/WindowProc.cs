@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -8,15 +7,11 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using Binarysharp.MemoryManagement.Common;
 using Binarysharp.MemoryManagement.Common.Builders;
-using Binarysharp.MemoryManagement.Hooks.WndProc;
 using Binarysharp.MemoryManagement.Management;
 using Binarysharp.MemoryManagement.Native;
 
 namespace Binarysharp.MemoryManagement.Hooks
 {
-
-  
-
     /// <summary>
     ///     Custom windows user messages that represent values to intercept and react on when detected in the windows message
     ///     queue, normally via a <code>WindowProc</code> hook.
@@ -26,54 +21,12 @@ namespace Binarysharp.MemoryManagement.Hooks
         /// <summary>
         ///     A delegate that has a return value.
         /// </summary>
-        RunFunc = 0,
+        RunDelegateReturn = 0,
 
         /// <summary>
         ///     A delegate with no return value (aka <code>void</code>).
         /// </summary>
-        RunAction = 1,
-
-        /// <summary>
-        ///     A delegate with a return value.
-        /// </summary>
-        RunDelegateWithReturn,
-
-        /// <summary>
-        /// The message to intercept in the WndProc hook to invoke the <see cref="IWindowProcHookEngine.StartUp()"/> method.
-        /// </summary>
-        StartUp,
-
-        /// <summary>
-        /// The message to intercept in the WndProc hook to invoke the <see cref="IWindowProcHookEngine.ShutDown()"/> method.
-        /// </summary>
-        ShutDown
-    }
-
-    /// <summary>
-    /// </summary>
-    public class InvokeTarget
-    {
-        #region Fields, Private Properties
-        /// <summary>
-        ///     The arguments
-        /// </summary>
-        public object[] Args;
-
-        /// <summary>
-        ///     The completed
-        /// </summary>
-        public bool Completed;
-
-        /// <summary>
-        ///     The result
-        /// </summary>
-        public object Result;
-
-        /// <summary>
-        ///     The target
-        /// </summary>
-        public Delegate Target;
-        #endregion
+        RunDelegate = 1
     }
 
     /// <summary>
@@ -97,7 +50,6 @@ namespace Binarysharp.MemoryManagement.Hooks
         // Collections.
         private GenericDictionary PendingFuncInvokes { get; } = new GenericDictionary();
         private List<Action> PendingActionInvokes { get; } = new List<Action>();
-        private ConcurrentQueue<InvokeTarget> InvokeQueue { get; } = new ConcurrentQueue<InvokeTarget>();
         #endregion
 
         #region Constructors, Destructors
@@ -161,13 +113,6 @@ namespace Binarysharp.MemoryManagement.Hooks
         ///     default value is true.
         /// </summary>
         public bool MustBeDisposed { get; }
-
-        /// <summary>
-        ///     Checks if the current managed thread id matches the local processes first thread id, indicating if the current
-        ///     managed thread id is the main thread or not.
-        /// </summary>
-        /// <value>True if this instance is in the main thread, else, false.</value>
-        public static bool InvokeRequired => Thread.CurrentThread.ManagedThreadId != Process.GetCurrentProcess().Threads[0].Id;
         #endregion
 
         #region Interface Implementations
@@ -257,7 +202,7 @@ namespace Binarysharp.MemoryManagement.Hooks
         /// <returns>A value.</returns>
         public T InvokeFunc<T>(Func<T> func) where T : struct
         {
-            if (!InvokeRequired)
+            if (TryValidateCurrentThread())
             {
                 // We're in the main thread.
                 return func();
@@ -266,7 +211,7 @@ namespace Binarysharp.MemoryManagement.Hooks
             PendingFuncInvokes.Add(invokedValueContainer.FuncHashCode, invokedValueContainer);
             // Pass the hash code (which is the dict key to the invoked value container object)
             // Through the user message.
-            SendUserMessage(UserMessage.RunFunc, (IntPtr) invokedValueContainer.FuncHashCode);
+            SendUserMessage(UserMessage.RunDelegateReturn, (IntPtr) invokedValueContainer.FuncHashCode);
             // Get the resut casted to the type given.
             var result =
                 PendingFuncInvokes.GetValue<GenericValueProxy<T>>(invokedValueContainer.FuncHashCode).Result;
@@ -276,63 +221,20 @@ namespace Binarysharp.MemoryManagement.Hooks
         }
 
         /// <summary>
-        ///     Invokes the <see cref="Delegate"/>.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="delegate">The delegate.</param>
-        /// <param name="args">The arguments.</param>
-        /// <returns></returns>
-        public object InvokeDel<T>(T @delegate, params object[] args) where T : class
-        {
-            var targetDelegate = @delegate as Delegate;
-
-            if (targetDelegate == null)
-            {
-                throw new ArgumentException("Target method is not a delegate type.");
-            }
-
-            if (!InvokeRequired)
-            {
-                return targetDelegate.DynamicInvoke(args);
-            }
-
-            var callback = new InvokeTarget {Target = targetDelegate, Args = args};
-            InvokeQueue.Enqueue(callback);
-            SendUserMessage(UserMessage.RunDelegateWithReturn, IntPtr.Zero);
-
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            while (!callback.Completed)
-            {
-                if (stopwatch.ElapsedMilliseconds < 2000)
-                {
-                    continue;
-                }
-
-                throw new TimeoutException(
-                    $"Could not invoke {targetDelegate.Method} from main thread (timed out after two seconds.)");
-            }
-
-            stopwatch.Stop();
-            return callback.Result;
-        }
-
-        /// <summary>
         ///     Invokes the specified <see cref="Action" /> inside the main thread of process this instance is currently attatched
         ///     to.
         /// </summary>
         /// <param name="action">The action to invoke.</param>
         public void InvokeAction(Action action)
         {
-            if (!InvokeRequired)
+            if (TryValidateCurrentThread())
             {
                 // In the main thread already.
                 action.Invoke();
             }
             // Else, add to the queue to invoke later.
             PendingActionInvokes.Add(action);
-            SendUserMessage(UserMessage.RunAction, IntPtr.Zero);
+            SendUserMessage(UserMessage.RunDelegate, IntPtr.Zero);
         }
         #endregion
 
@@ -349,31 +251,27 @@ namespace Binarysharp.MemoryManagement.Hooks
             switch (tmpMsg)
             {
                 // LpParam is used to pass a hash code sometimes.
-                case UserMessage.RunFunc:
+                case UserMessage.RunDelegateReturn:
                     ((IGenericValue) PendingFuncInvokes.ItemsAsDictionary[lpParam]).SetValue();
                     break;
 
-                case UserMessage.RunAction:
+                case UserMessage.RunDelegate:
                     var number = PendingActionInvokes.Count - 1;
                     PendingActionInvokes[number].Invoke();
                     PendingActionInvokes.RemoveAt(number);
-                    break;
-
-                case UserMessage.RunDelegateWithReturn:
-                    InvokeLastQueue();
                     break;
             }
             return NativeMethods.CallWindowProc(OriginalCallbackPointer, hWnd, msg, wParam, lpParam);
         }
 
-        private void InvokeLastQueue()
+        /// <summary>
+        ///     Checks if the current managed thread id matches the local processes first thread id, indicating if the current
+        ///     managed thread id is the main thread or not.
+        /// </summary>
+        /// <returns>True if this instance is in the main thread, else, false.</returns>
+        private static bool TryValidateCurrentThread()
         {
-            InvokeTarget callback;
-            while (InvokeQueue.TryDequeue(out callback))
-            {
-                callback.Result = callback.Target.DynamicInvoke(callback.Args);
-                callback.Completed = true;
-            }
+            return Thread.CurrentThread.ManagedThreadId == Process.GetCurrentProcess().Threads[0].Id;
         }
         #endregion
 
