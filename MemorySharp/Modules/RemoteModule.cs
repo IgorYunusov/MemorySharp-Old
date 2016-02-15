@@ -10,10 +10,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Binarysharp.MemoryManagement.Memory;
 using Binarysharp.MemoryManagement.Native;
-using Binarysharp.MemoryManagement.Patterns;
+using SharpPlus.Memory.Modules;
 
 namespace Binarysharp.MemoryManagement.Modules
 {
@@ -105,106 +106,49 @@ namespace Binarysharp.MemoryManagement.Modules
 
         #region Public Methods
         /// <summary>
-        ///     Performs a pattern scan from a <see cref="SerializablePattern" /> struct.
+        ///     Finds the data pattern.
         /// </summary>
-        /// <param name="pattern">The <see cref="SerializablePattern" /> instance to use.</param>
-        /// <returns>A new <see cref="PatternScanResult" /> instance.</returns>
-        public PatternScanResult FindPattern(SerializablePattern pattern)
+        /// <param name="patternClass">The pattern class.</param>
+        /// <returns></returns>
+        /// <exception cref="Exception">The pattern  + [ + bytes.Length + ]  + mask +  was not found.</exception>
+        public ScanResult FindDataPattern(DataPattern patternClass)
         {
-            return FindPattern(pattern.TextPattern, pattern.OffsetToAdd, pattern.RebaseResult);
-        }
+            var patternData = LazyData.Value;
+            var patternDataLength = patternData.Length;
+            var bytes = patternClass.Pattern.GetBytesFromDwordPattern();
+            var mask = patternClass.Pattern.GetMaskFromDwordPattern();
 
-        /// <summary>
-        ///     Performs a pattern scan from a <see cref="Pattern" /> struct.
-        /// </summary>
-        /// m>
-        /// <param name="pattern">The <see cref="Pattern" /> instance to use.</param>
-        /// <returns>A new <see cref="PatternScanResult" /> instance.</returns>
-        public PatternScanResult FindPattern(Pattern pattern)
-        {
-            return FindPattern(pattern.TextPattern, pattern.OffsetToAdd, pattern.RebaseResult);
-        }
-
-        /// <summary>
-        ///     Preform a pattern scan from a dword string based pattern.
-        /// </summary>
-        /// m>
-        /// <param name="patternText">
-        ///     The dword string based pattern text containing the pattern to try and find matches against.
-        ///     <example>
-        ///         <code>
-        /// var bytes = new byte[]{55,45,00,00,55} ;
-        /// var mask = "xx??x";
-        /// </code>
-        ///     </example>
-        /// </param>
-        /// <param name="offsetToAdd">The offset to add to the offset result found from the pattern.</param>
-        /// <param name="reBase">If the address should be rebased to this <see cref="RemoteModule" /> Instance's base address.</param>
-        /// <returns>A new <see cref="PatternScanResult" /> instance.</returns>
-        public PatternScanResult FindPattern(string patternText, int offsetToAdd, bool reBase)
-        {
-            var bytes = PatternCore.GetBytesFromDwordPattern(patternText);
-            return FindPattern(bytes, offsetToAdd, reBase);
-        }
-
-        /// <summary>
-        ///     Preform a pattern scan from a byte[] array pattern.
-        /// </summary>
-        /// <param name="pattern">The byte array that contains the pattern of bytes we're looking for.</param>
-        /// <param name="offsetToAdd">The offset to add to the offset result found from the pattern.</param>
-        /// <param name="rebaseResult">
-        ///     If the final address result should be rebased to the base address of the
-        ///     <see cref="ProcessModule" /> the pattern data resides in.
-        /// </param>
-        /// <returns>A new <see cref="PatternScanResult" /> instance.</returns>
-        public PatternScanResult FindPattern(byte[] pattern, int offsetToAdd, bool rebaseResult)
-        {
-            var mask = PatternCore.MaskFromPattern(pattern);
-            return FindPattern(pattern, mask, offsetToAdd, rebaseResult);
-        }
-
-        /// <summary>
-        ///     Performs a pattern scan.
-        /// </summary>
-        /// <param name="pattern">The byte array that contains the pattern of bytes we're looking for.</param>
-        /// <param name="mask">
-        ///     The mask that defines the byte pattern we are searching for.
-        ///     <example>
-        ///         <code>
-        /// var bytes = new byte[]{55,45,00,00,55} ;
-        /// var mask = "xx??x";
-        /// </code>
-        ///     </example>
-        /// </param>
-        /// <param name="offsetToAdd">The offset to add to the offset result found from the pattern.</param>
-        /// <param name="rebaseResult">
-        ///     If the final address result should be rebased to the base address of the
-        ///     <see cref="ProcessModule" /> the pattern data resides in.
-        /// </param>
-        /// <returns>A new <see cref="PatternScanResult" /> instance.</returns>
-        public PatternScanResult FindPattern(byte[] pattern, string mask, int offsetToAdd, bool rebaseResult)
-        {
-            for (var offset = 0; offset < Data.Length; offset++)
+            for (var offset = 0; offset < patternDataLength; offset++)
             {
-                if (mask.Where((m, b) => m == 'x' && pattern[b] != Data[b + offset]).Any())
-                {
+                if (mask.Where((m, b) => m == 'x' && bytes[b] != patternData[b + offset]).Any())
                     continue;
-                }
-
-                var found = MemorySharp.Read<IntPtr>(BaseAddress + offset + offsetToAdd);
-
-                var result = new PatternScanResult
-                {
-                    OriginalAddress = found,
-                    Address = rebaseResult ? found : IntPtr.Subtract(found, (int) BaseAddress),
-                    Offset = (IntPtr) offset
-                };
-
-                return result;
+                return new ScanResult { Address = MemorySharp.Read<IntPtr>(BaseAddress + offset), Offset = (IntPtr) offset };
             }
-            throw new Exception("Could not find the pattern.");
+            // If this is reached, the pattern was not found.
+            throw new Exception("The pattern " + "[" + bytes.Length + "] " + mask + " was not found.");
         }
 
+        /// <summary>
+        /// Finds the function pattern.
+        /// </summary>
+        /// <param name="patternClass">The pattern class.</param>
+        /// <returns></returns>
+        /// <exception cref="Exception">The pattern  + [ + pattern.Length + ]  + mask +  was not found.</exception>
+        public ScanResult FindFunctionPattern(FunctionPattern patternClass)
+        {
+            var patternData = LazyData.Value;
+            var patternDataLength = patternData.Length;
+            var pattern = patternClass.Pattern.GetBytesFromDwordPattern();
+            var mask = patternClass.Pattern.GetMaskFromDwordPattern();
+            for (var offset = 0; offset < patternDataLength; offset++)
+            {
+                if (mask.Where((m, b) => m == 'x' && pattern[b] != patternData[b + offset]).Any())
+                    continue;
+                return new ScanResult { Address = BaseAddress + offset, Offset = (IntPtr) offset };
+            }
+            // If this is reached, the pattern was not found.
+            throw new Exception("The pattern " + "[" + pattern.Length + "] " + mask + " was not found.");
+        }
         /// <summary>
         ///     Finds the specified function in the remote module.
         /// </summary>
