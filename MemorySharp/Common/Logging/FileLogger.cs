@@ -28,9 +28,9 @@ namespace Binarysharp.MemoryManagement.Common.Logging
             UseFormattedText = fileLoggerParams.UseFormattedText;
             Directory.CreateDirectory(fileLoggerParams.Directory);
             StreamWriter =
-                new StreamWriter(Path.Combine(fileLoggerParams.Directory, fileLoggerParams.FileName,
+                new StreamWriter(Path.Combine(fileLoggerParams.Directory,
                     $"{fileLoggerParams.FileName}-{DateTime.Now:yyyy-MM-dd_hh-mm-ss}.txt"))
-                {AutoFlush = true};
+                { AutoFlush = true };
             IsEnabled = true;
         }
         #endregion
