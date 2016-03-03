@@ -144,23 +144,8 @@ namespace Binarysharp.MemoryManagement.Modules
         public PatternScanResult FindPattern(string patternText, int offsetToAdd, bool reBase)
         {
             var bytes = PatternCore.GetBytesFromDwordPattern(patternText);
-            return FindPattern(bytes, offsetToAdd, reBase);
-        }
-
-        /// <summary>
-        ///     Preform a pattern scan from a byte[] array pattern.
-        /// </summary>
-        /// <param name="pattern">The byte array that contains the pattern of bytes we're looking for.</param>
-        /// <param name="offsetToAdd">The offset to add to the offset result found from the pattern.</param>
-        /// <param name="rebaseResult">
-        ///     If the final address result should be rebased to the base address of the
-        ///     <see cref="ProcessModule" /> the pattern data resides in.
-        /// </param>
-        /// <returns>A new <see cref="PatternScanResult" /> instance.</returns>
-        public PatternScanResult FindPattern(byte[] pattern, int offsetToAdd, bool rebaseResult)
-        {
-            var mask = PatternCore.MaskFromPattern(pattern);
-            return FindPattern(pattern, mask, offsetToAdd, rebaseResult);
+            var mask = PatternCore.MaskFromPattern(patternText);
+            return FindPattern(bytes, mask, offsetToAdd, reBase);
         }
 
         /// <summary>
